@@ -76,7 +76,7 @@ class BoardTests(TestCase):
             [(0, None), (1, 1), (0, 1)]
         ])
 
-    def test_mine_belonging_to_multiple_safe_areas(self):
+    def test_multiple_safe_areas(self):
         game = Game._non_random_create(5, [(x, 2) for x in range(5)])
         self.assertEqual(self.get_cells(game), [
             [(0, 1), (0, 1), (0, 1), (0, 1), (0, 1)],
@@ -201,3 +201,49 @@ class GameViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Start new game")
         self.assertIsInstance(response.context['form'], CreateGameForm)
+
+    def test_ranking_view(self):
+        response = self.client.get(reverse('game:ranking'))
+        self.assertEqual(response.status_code, 200)
+        self.assertQuerysetEqual(response.context['finished_winning_games'], [])
+
+        # create 3 winning games with end_timer decreasing
+        for i in range(3):
+            Game.objects.create(game_over=True, win=True, difficulty=0, end_timer=10 - i)
+
+        response = self.client.get(reverse('game:ranking'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [g.end_timer for g in response.context['finished_winning_games']],
+            [8, 9, 10]
+        )
+
+        # create 3 loosing games. Shouldn't change the ranking
+        for i in range(3):
+            Game.objects.create(game_over=True, win=False, difficulty=0, end_timer=i)
+
+        response = self.client.get(reverse('game:ranking'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [g.end_timer for g in response.context['finished_winning_games']],
+            [8, 9, 10]
+        )
+
+        # create 5 winning games in difficulty 1. Shouldn't change the ranking
+        for i in range(5):
+            Game.objects.create(game_over=True, win=True, difficulty=1, end_timer=i)
+
+        response = self.client.get(reverse('game:ranking'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [g.end_timer for g in response.context['finished_winning_games']],
+            [8, 9, 10]
+        )
+
+        # now there should 5 new ranking on difficulty 1
+        response = self.client.get(reverse('game:ranking', args=(1,)))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [g.end_timer for g in response.context['finished_winning_games']],
+            [0, 1, 2, 3, 4]
+        )
