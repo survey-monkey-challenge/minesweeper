@@ -69,19 +69,28 @@ class Game(models.Model):
     def board_size(self):
         return len(self.board)
 
+    @property
+    def mine_count(self):
+        return self._get_board_configuration(self.difficulty)[1]
+
     @classmethod
     def create(cls, *, difficulty=Difficulty.normal):
-        configuration = {
-            Difficulty.super_easy: (3, 2),
-            Difficulty.easy: (9, 10),
-            Difficulty.normal: (16, 40),
-            Difficulty.hard: (22, 99),
-        }
-        board_size, mine_count = configuration[difficulty]
-        return cls._non_random_create(board_size, [
-            (random.randint(0, board_size - 1), random.randint(0, board_size - 1))
-            for _ in range(mine_count)
-        ], difficulty)
+        board_size, mine_count = cls._get_board_configuration(difficulty)
+        game = cls(difficulty=difficulty.value)
+        game.board = [
+            [Cell(x, y) for x in range(board_size)]
+            for y in range(board_size)
+        ]
+        all_cells = sum(game.board, [])  # flatten matrix
+        # Random sampling without replacement. This allows for random mines while keeping the
+        # number of mines (no collitions)
+        cells_with_mines = random.sample(all_cells, mine_count)
+        for cell in cells_with_mines:
+            game._place_mine(cell)
+
+        game._identify_safe_areas()
+        game.save()
+        return game
 
     @classmethod
     def _non_random_create(cls, board_size, mine_placement, difficulty=Difficulty.normal):
@@ -94,7 +103,10 @@ class Game(models.Model):
             for y in range(board_size)
         ]
         for x, y in mine_placement:
-            game._place_mine(x, y)
+            if x < 0 or y < 0:
+                raise IndexError('Negative indices not allowed in the board. x={}, y={}'.format(x, y))
+            cell = game.board[y][x]
+            game._place_mine(cell)
 
         game._identify_safe_areas()
         game.save()
@@ -156,26 +168,21 @@ class Game(models.Model):
         self.save()
         return self.game_over, self.win, cells_revealed
 
-    def _place_mine(self, x, y):
+    def _place_mine(self, cell):
         '''
-        Places a mine at x, y. All surrounding cells have their nearby_mine_counter attribute
-        increased. If the cell already has a mine, ignore it.
-        negative indices while valid on Python should raise an exception here.
+        Places a mine at cell. All surrounding cells have their nearby_mine_counter attribute
+        increased.
         '''
-        if x < 0 or y < 0:
-            raise IndexError('Negative indices not allowed in the board. x={}, y={}'.format(x, y))
+        if cell.has_mine:
+            raise ValueError('Duplicate mines are not allowed')
 
-        # ignoring collitions, otherwise the nearby_mine_counter will count duplicates
-        if self.board[y][x].has_mine:
-            return
-
-        self.board[y][x].has_mine = True
-        for i in range(max(0, x - 1), min(x + 2, self.board_size)):
-            for j in range(max(0, y - 1), min(y + 2, self.board_size)):
+        cell.has_mine = True
+        for i in range(max(0, cell.x - 1), min(cell.x + 2, self.board_size)):
+            for j in range(max(0, cell.y - 1), min(cell.y + 2, self.board_size)):
                 if self.board[j][i].has_mine:
                     continue
                 self.board[j][i].nearby_mine_counter += 1
-        self.board[y][x].nearby_mine_counter = 0
+        cell.nearby_mine_counter = 0
 
     def _identify_safe_areas(self):
         '''
@@ -228,6 +235,17 @@ class Game(models.Model):
                 if not cell.has_mine and cell.hidden:
                     return
         self.game_over = self.win = True
+
+    @classmethod
+    def _get_board_configuration(cls, difficulty):
+        configuration = {
+            Difficulty.super_easy: (3, 2),
+            Difficulty.easy: (9, 10),
+            Difficulty.normal: (16, 40),
+            Difficulty.hard: (22, 99),
+        }
+        board_size, mine_count = configuration[difficulty]
+        return board_size, mine_count  # keeping the variables mainly as documentation
 
     def __str__(self):
         '''String representation of the matrix of nearby_mine_counter. Useful for debugging'''

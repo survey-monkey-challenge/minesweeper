@@ -1,6 +1,8 @@
+from django.core.urlresolvers import reverse
 from django.test import TestCase
 
 from .models import Game
+from .forms import CreateGameForm
 
 
 class BoardTests(TestCase):
@@ -87,3 +89,27 @@ class BoardTests(TestCase):
             [(c.nearby_mine_counter, c.safe_area_id) for c in row]
             for row in game.board
         ]
+
+
+class GameLogicTests(TestCase):
+    pass
+
+
+class GameViewTests(TestCase):
+    def test_create_game_get_view(self):
+        response = self.client.get(reverse('game:create'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Start new game")
+        self.assertIsInstance(response.context['form'], CreateGameForm)
+
+    def test_create_game_post_view(self):
+        response = self.client.post(reverse('game:create'), {'difficulty': 1})
+        self.assertEqual(response.status_code, 302)
+
+    def test_game_view(self):
+        response = self.client.post(reverse('game:create'), {'difficulty': 1})
+        self.assertEqual(response.status_code, 302)
+        response = self.client.get(response.url)  # new game url
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Start new game")
+        self.assertIsInstance(response.context['form'], CreateGameForm)
