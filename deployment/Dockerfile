@@ -22,6 +22,8 @@ RUN mkdir -p /var/log/uwsgi  # For the uwsgi logs. See uwsgi.ini for more info
 # Copy everything else and run the dev server
 COPY . /project
 RUN python manage.py collectstatic --noinput
+# Run migrations
+RUN python manage.py migrate
 
 # Run nginx and django under supervisord
 EXPOSE 80
