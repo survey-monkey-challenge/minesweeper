@@ -20,7 +20,7 @@ def flag_view(request, signed_id):
 
 def process_action_request(request, signed_id, action, hide_mine_counter=True):
     if not request.is_ajax() or not request.POST:
-        raise HttpResponseBadRequest()
+        return HttpResponseBadRequest()
 
     game_id = signer.unsign(signed_id)
     game = get_object_or_404(Game, pk=game_id)
