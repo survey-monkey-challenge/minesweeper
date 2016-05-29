@@ -17,7 +17,7 @@
               <td id="cell{{ cell.x }}-{{ cell.y }}"
                 data-x="{{ cell.x }}"
                 data-y="{{ cell.y }}"
-                class="cell-{{ cell.display.name }}">
+                class="cell-{{ cell.display.name }} text-center">
                 {% if cell.display.name == 'cleared' and cell.nearby_mine_counter != 0 %}
                   {{ cell.nearby_mine_counter }}
                 {% endif %}
@@ -31,7 +31,7 @@
 
   <br/>
   <div class="row">
-    <div class="col-md-offset-2 col-md-6">
+    <div class="col-md-offset-1 col-md-6">
       {% crispy form %}
     </div>
   </div>
