@@ -1,3 +1,5 @@
+import random
+
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 
@@ -92,7 +94,93 @@ class BoardTests(TestCase):
 
 
 class GameLogicTests(TestCase):
-    pass
+    def test_game_over(self):
+        game = Game._non_random_create(3, [(0, 0)])
+
+        game_over, win, _ = game.sweep_cell(2, 2)  # sweep bottom right corner (no mine)
+        self.assertFalse(game_over)
+        self.assertFalse(win)
+
+        game_over, win, _ = game.sweep_cell(0, 0)  # sweep upper left corner (mine)
+        self.assertTrue(game_over)
+        self.assertFalse(win)
+
+    def test_flag(self):
+        game = Game._non_random_create(3, [(0, 0)])
+
+        self.assertFalse(game.board[0][0].has_flag)
+        game_over, win, updated_cells = game.flag_cell(0, 0)  # flag upper left corner
+        self.assertTrue(game.board[0][0].has_flag)
+        self.assertFalse(game_over)
+        self.assertFalse(win)
+        self.assertEqual(len(updated_cells), 1)  # only the flag cell should change
+
+        # Flag again. It should toggle it
+        game_over, win, updated_cells = game.flag_cell(0, 0)  # flag upper left corner
+        self.assertFalse(game.board[0][0].has_flag)
+        self.assertFalse(game_over)
+        self.assertFalse(win)
+        self.assertEqual(len(updated_cells), 1)  # only the flag cell should change
+
+    def test_cant_flag_cleared_cell(self):
+        game = Game._non_random_create(3, [(0, 0)])
+
+        game_over, win, _ = game.sweep_cell(2, 2)  # sweep bottom right corner (no mine)
+        self.assertFalse(game_over)
+        self.assertFalse(win)
+
+        # try to flag the cleared cell
+        self.assertFalse(game.board[2][2].has_flag)
+        game_over, win, updated_cells = game.flag_cell(2, 2)  # flag bottom right corner
+        self.assertFalse(game.board[2][2].has_flag)  # still false, didn't change
+        self.assertFalse(game_over)
+        self.assertFalse(win)
+        self.assertEqual(len(updated_cells), 0)  # no updates from the server
+
+    def test_cant_clear_flagged_cell(self):
+        game = Game._non_random_create(3, [(0, 0)])
+
+        self.assertFalse(game.board[0][0].has_flag)
+        game_over, win, _ = game.flag_cell(0, 0)  # flag upper left corner (mine)
+        self.assertTrue(game.board[0][0].has_flag)
+        self.assertFalse(game_over)
+        self.assertFalse(win)
+
+        # try to clear the flagged cell
+        self.assertTrue(game.board[0][0].hidden)
+        game_over, win, updated_cells = game.sweep_cell(0, 0)  # clear upper left corner
+        self.assertTrue(game.board[0][0].hidden)  # still true, didn't change
+        self.assertFalse(game_over)
+        self.assertFalse(win)
+        self.assertEqual(len(updated_cells), 0)  # no updates from the server
+
+    def test_no_updates_after_game_over(self):
+        game = Game._non_random_create(3, [(0, 0)])
+
+        game_over, win, _ = game.sweep_cell(2, 2)  # sweep bottom right corner (no mine)
+        self.assertFalse(game_over)
+        self.assertFalse(win)
+
+        game_over, win, _ = game.sweep_cell(0, 0)  # sweep upper left corner (mine)
+        self.assertTrue(game_over)
+        self.assertFalse(win)
+
+        # try to clear random cell
+        x, y = random.randint(0, 2), random.randint(0, 2)
+        hidden_before = game.board[x][y].hidden
+        game_over, win, updated_cells = game.sweep_cell(x, y)
+        self.assertEqual(hidden_before, game.board[x][y].hidden)  # didn't change
+        self.assertTrue(game_over)
+        self.assertFalse(win)
+        self.assertEqual(len(updated_cells), 0)  # no updates from the server
+
+        # try to flag random cell
+        flag_before = game.board[x][y].has_flag
+        game_over, win, updated_cells = game.flag_cell(x, y)  # flag bottom right corner
+        self.assertEqual(flag_before, game.board[x][y].has_flag)  # didn't change
+        self.assertTrue(game_over)
+        self.assertFalse(win)
+        self.assertEqual(len(updated_cells), 0)  # no updates from the server
 
 
 class GameViewTests(TestCase):

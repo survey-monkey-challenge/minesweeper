@@ -252,7 +252,6 @@ class Game(models.Model):
 
     def _set_end_timer(self):
         self.end_timer = int((timezone.now() - self.creation_datetime).total_seconds())
-        print(self.end_timer)
 
     @classmethod
     def _get_board_configuration(cls, difficulty):
