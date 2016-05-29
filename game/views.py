@@ -48,6 +48,9 @@ class GameView(generic.DetailView):
             action=reverse('game:create'),
             initial={'difficulty': self.object.difficulty}
         )
-        timer_delta = (timezone.now() - self.object.creation_datetime)
-        context_data['initial_timer'] = int(timer_delta.total_seconds())
+        if self.object.game_over:
+            context_data['initial_timer'] = self.object.end_timer
+        else:
+            timer_delta = (timezone.now() - self.object.creation_datetime)
+            context_data['initial_timer'] = int(timer_delta.total_seconds())
         return context_data

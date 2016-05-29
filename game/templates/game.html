@@ -50,6 +50,7 @@
 {% block scripts %}
   <script>
     "use strict"; // reduces javascript craziness
+    var timerIntervalId = null;
 
     function changeCells(cells) {
       $.each(cells, function(i, cell) {
@@ -66,18 +67,24 @@
           $('#game_over_message').html('Game over');
         }
         $('#game_over').removeClass('vis_hidden');
+
+        if (timerIntervalId != null) { // stop timer if running
+          clearInterval(timerIntervalId);
+        }
       }
     }
 
     $(function() {
       // timer
-      var start = new Date();
+      {% if not game.game_over %}
+        var start = new Date();
 
-      setInterval(function() {
-        var now = new Date();
-        var seconds = Math.round((now - start) / 1000) + {{ initial_timer }};
-        $('#timer').text(seconds);
-      }, 1000);
+        timerIntervalId = setInterval(function() {
+          var now = new Date();
+          var seconds = Math.round((now - start) / 1000) + {{ initial_timer }};
+          $('#timer').text(seconds);
+        }, 1000);
+      {% endif %}
 
       // flag cell
       $('table.board tbody').on('contextmenu', 'td', function(event) {

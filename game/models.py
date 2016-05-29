@@ -2,6 +2,7 @@ import random
 import enum
 
 from django.db import models
+from django.utils import timezone
 from picklefield.fields import PickledObjectField
 
 
@@ -54,7 +55,8 @@ class Cell:
 
 
 class Game(models.Model):
-    creation_datetime = models.DateTimeField(auto_now=True)
+    creation_datetime = models.DateTimeField(auto_now_add=True)
+    board = PickledObjectField()  # matrix of cells
     difficulty = models.IntegerField(
         choices=(
             (x.value, x.name.title().replace('_', ' '))
@@ -63,7 +65,7 @@ class Game(models.Model):
     )
     game_over = models.BooleanField(default=False)
     win = models.BooleanField(default=False)
-    board = PickledObjectField()  # matrix of cells
+    end_timer = models.PositiveIntegerField(default=0)
 
     @property
     def board_size(self):
@@ -117,7 +119,7 @@ class Game(models.Model):
     def flag_cell(self, x, y):
         '''
         Flags a cell unless the game is over or the cell has already being cleared.
-        Checks if the end of game has been reached (See _check_for_game_over)
+        Checks if the end of game has been reached (See _check_for_winning_state)
         Returns the game over state and the cells to update (one or zero in this case)
         '''
         cell = self.board[y][x]
@@ -125,7 +127,7 @@ class Game(models.Model):
             return self.game_over, self.win, []
 
         cell.has_flag = not cell.has_flag
-        self._check_for_game_over()
+        self._check_for_winning_state()
         self.save()
         return self.game_over, self.win, [cell]
 
@@ -143,7 +145,7 @@ class Game(models.Model):
             * The cell is the last cell to reveal and all mines have been flagged:
                 You win!
 
-        Checks if the end of game has been reached (See _check_for_game_over)
+        Checks if the end of game has been reached (See _check_for_winning_state)
         Returns the game over state and the cells to update (zero or more cells)
         '''
         cell = self.board[y][x]
@@ -166,7 +168,9 @@ class Game(models.Model):
                         cells_revealed.add(cell)
 
         self.game_over = is_game_over
-        self._check_for_game_over()
+        if is_game_over:
+            self._set_end_timer()
+        self._check_for_winning_state()
         self.save()
         return self.game_over, self.win, cells_revealed
 
@@ -221,7 +225,7 @@ class Game(models.Model):
                     area_id += 1
                     mark_area(x, y, area_id)
 
-    def _check_for_game_over(self):
+    def _check_for_winning_state(self):
         '''
         Checks if the end of game has been reached (all mines have been flagged and
         the rest of the cells have been cleared)
@@ -237,6 +241,11 @@ class Game(models.Model):
                 if not cell.has_mine and cell.hidden:
                     return
         self.game_over = self.win = True
+        self._set_end_timer()
+
+    def _set_end_timer(self):
+        self.end_timer = int((timezone.now() - self.creation_datetime).total_seconds())
+        print(self.end_timer)
 
     @classmethod
     def _get_board_configuration(cls, difficulty):
