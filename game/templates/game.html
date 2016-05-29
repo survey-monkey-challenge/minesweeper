@@ -24,10 +24,17 @@
 
   <br/>
   <div class="row">
-    <div class="col-md-offset-4 col-md-2">
-      <h4>
-        Mine count: {{ game.mine_count }}
-      </h4>
+    <div class="center-block" style="width: 500px;">
+      <div class="col-md-6">
+        <h4>
+          Timer: <span  id="timer">{{ initial_timer }}</span>
+        </h4>
+      </div>
+      <div class="col-md-6">
+        <h4 class="text-right">
+          Mine count: {{ game.mine_count }}
+        </h4>
+      </div>
     </div>
   </div>
 
@@ -42,6 +49,8 @@
 
 {% block scripts %}
   <script>
+    "use strict"; // reduces javascript craziness
+
     function changeCells(cells) {
       $.each(cells, function(i, cell) {
         var $td = $('#cell' + cell.x + '-' + cell.y);
@@ -61,6 +70,15 @@
     }
 
     $(function() {
+      // timer
+      var start = new Date();
+
+      setInterval(function() {
+        var now = new Date();
+        var seconds = Math.round((now - start) / 1000) + {{ initial_timer }};
+        $('#timer').text(seconds);
+      }, 1000);
+
       // flag cell
       $('table.board tbody').on('contextmenu', 'td', function(event) {
         event.preventDefault();

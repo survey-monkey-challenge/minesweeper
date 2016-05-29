@@ -1,6 +1,7 @@
 from django.core import signing
 from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views import generic
 
 from .models import Game, Difficulty
@@ -47,4 +48,6 @@ class GameView(generic.DetailView):
             action=reverse('game:create'),
             initial={'difficulty': self.object.difficulty}
         )
+        timer_delta = (timezone.now() - self.object.creation_datetime)
+        context_data['initial_timer'] = int(timer_delta.total_seconds())
         return context_data

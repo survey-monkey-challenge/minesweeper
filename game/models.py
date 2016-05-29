@@ -75,6 +75,10 @@ class Game(models.Model):
 
     @classmethod
     def create(cls, *, difficulty=Difficulty.normal):
+        '''
+        Initializes the board using random sampling without replacement for the mines.
+        This allows for random mines while keeping the number of mines (no collitions).
+        '''
         board_size, mine_count = cls._get_board_configuration(difficulty)
         game = cls(difficulty=difficulty.value)
         game.board = [
@@ -82,8 +86,6 @@ class Game(models.Model):
             for y in range(board_size)
         ]
         all_cells = sum(game.board, [])  # flatten matrix
-        # Random sampling without replacement. This allows for random mines while keeping the
-        # number of mines (no collitions)
         cells_with_mines = random.sample(all_cells, mine_count)
         for cell in cells_with_mines:
             game._place_mine(cell)
