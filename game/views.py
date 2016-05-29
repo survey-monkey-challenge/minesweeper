@@ -25,6 +25,10 @@ class CreateGameView(generic.FormView):
         return reverse('game:match', args=(signed_id,))
 
 
+class RankingView(generic.TemplateView):
+    template_name = 'ranking.html'
+
+
 class GameView(generic.DetailView):
     object_name = 'game'
     template_name = 'game.html'
