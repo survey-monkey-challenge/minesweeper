@@ -2,5 +2,47 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-  <h2> Ranking - TODO</h2>
+  <div class="row">
+    <h2>Ranking</h2>
+  </div>
+
+  <div class="row">
+    <ul class="nav nav-tabs">
+      {% for difficulty in difficulties %}
+        <li role="presentation" class="{{ difficulty.css_class }}">
+          <a href="{{ difficulty.url }}">{{ difficulty.title }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="row">
+    {% if finished_winning_games %}
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th class="col-md-2">#</th>
+            <th class="col-md-2">Timer</th>
+            <th class="col-md-5">Username</th>
+            <th class="col-md-3">Match</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for game in finished_winning_games %}
+            <tr>
+              <th scope="row">{{ forloop.counter }}</th>
+              <td>{{ game.end_timer }} seconds</td>
+              <td>Some user name (TODO)</td>
+              <td><a href="{{ game.get_absolute_url }}">Go to game</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <h5>No one beat the game at this difficulty. <a href="{% url 'game:create' %}">Want to give it a shot?</a></h5>
+      <p>
+        TODO: This should be improved and include a button to create a new game on the current difficulty
+      </p>
+    {% endif %}
+  </div>
 {% endblock %}

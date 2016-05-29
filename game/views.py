@@ -1,5 +1,6 @@
 from django.core import signing
 from django.core.urlresolvers import reverse
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views import generic
@@ -25,12 +26,37 @@ class CreateGameView(generic.FormView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        signed_id = signer.sign(self.object.id)
-        return reverse('game:match', args=(signed_id,))
+        return self.object.get_absolute_url()
 
 
-class RankingView(generic.TemplateView):
+class RankingView(generic.ListView):
     template_name = 'ranking.html'
+    context_object_name = 'finished_winning_games'
+
+    def get_queryset(self):
+        difficulty_value = self.kwargs.get('difficulty_value') or 0
+        try:
+            self.difficulty = Difficulty(int(difficulty_value))
+        except ValueError:
+            raise Http404
+
+        return Game.objects.filter(
+            game_over=True,
+            win=True,
+            difficulty=self.difficulty.value
+        ).order_by('end_timer')
+
+    def get_context_data(self, **kwargs):
+        context_data = super().get_context_data(**kwargs)
+        context_data['difficulties'] = [
+            {
+                'url': reverse('game:ranking', kwargs={'difficulty_value': x.value}),
+                'title': x.name.title().replace('_', ' '),
+                'css_class': 'active' if x == self.difficulty else ''
+            }
+            for x in Difficulty
+        ]
+        return context_data
 
 
 class GameView(generic.DetailView):

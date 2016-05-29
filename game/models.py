@@ -1,6 +1,8 @@
 import random
 import enum
 
+from django.core import signing
+from django.core.urlresolvers import reverse
 from django.db import models
 from django.utils import timezone
 from picklefield.fields import PickledObjectField
@@ -173,6 +175,11 @@ class Game(models.Model):
         self._check_for_winning_state()
         self.save()
         return self.game_over, self.win, cells_revealed
+
+    def get_absolute_url(self):
+        signer = signing.Signer()
+        signed_id = signer.sign(self.id)
+        return reverse('game:match', args=(signed_id,))
 
     def _place_mine(self, cell):
         '''
