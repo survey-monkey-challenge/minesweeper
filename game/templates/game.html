@@ -3,7 +3,9 @@
 
 {% block content %}
   <div id="game_over" class="row {% if not game.game_over %}vis_hidden{% endif %}">
-    <h1 class="bg-danger text-center">GAME OVER!</h1>
+    <h1 id="game_over_message" class="text-center">
+      {% if game.win %}You win!{% else %}Game over{% endif %}
+    </h1>
   </div>
 
   <div class="row">
@@ -48,6 +50,17 @@
       });
     }
 
+    function checkGameOver(data) {
+      if (data.is_game_over) {
+        if (data.win) {
+          $('#game_over_message').html('You win!');
+        } else {
+          $('#game_over_message').html('Game over');
+        }
+        $('#game_over').removeClass('vis_hidden');
+      }
+    }
+
     $(function() {
       // flag cell
       $('table.board tbody').on('contextmenu', 'td', function(event) {
@@ -58,6 +71,7 @@
           y: $td.data('y')
         }, function(data) {
           changeCells(data.cells);
+          checkGameOver(data);
         });
       });
 
@@ -70,9 +84,7 @@
           y: $td.data('y')
         }, function(data) {
           changeCells(data.cells);
-          if (data.is_game_over) {
-            $('#game_over').removeClass('vis_hidden');
-          }
+          checkGameOver(data);
         });
       });
     });

@@ -43,7 +43,8 @@ class GameView(generic.DetailView):
         context_data['signed_id'] = self.kwargs['signed_id']
         context_data['form'] = CreateGameForm(
             action=reverse('game:create'),
-            submit_label='Start new game'
+            submit_label='Start new game',
+            initial={'difficulty': self.object.difficulty}
         )
         return context_data
 
@@ -57,9 +58,10 @@ def sweep_view(request, signed_id):
     game = get_object_or_404(Game, pk=game_id)
     x = int(request.POST['x'])
     y = int(request.POST['y'])
-    is_game_over, cells = game.reveal_area(x, y)
+    is_game_over, win, cells = game.sweep(x, y)
     data = {
         'is_game_over': is_game_over,
+        'win': win,
         'cells': [
             {
                 'x': cell.x,
@@ -81,8 +83,10 @@ def flag_view(request, signed_id):
     game = get_object_or_404(Game, pk=game_id)
     x = int(request.POST['x'])
     y = int(request.POST['y'])
-    cells = game.flag(x, y)
+    is_game_over, win, cells = game.flag(x, y)
     data = {
+        'is_game_over': is_game_over,
+        'win': win,
         'cells': [
             {
                 'x': cell.x,

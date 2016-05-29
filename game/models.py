@@ -15,9 +15,10 @@ class CellDisplay(enum.IntEnum):
 
 @enum.unique
 class Difficulty(enum.IntEnum):
-    easy = 0
-    normal = 1
-    hard = 2
+    super_easy = 0
+    easy = 1
+    normal = 2
+    hard = 3
 
 
 class Cell:
@@ -51,6 +52,7 @@ class Cell:
 
 class Game(models.Model):
     configuration = {
+        Difficulty.super_easy: (3, 2),
         Difficulty.easy: (9, 10),
         Difficulty.normal: (16, 40),
         Difficulty.hard: (22, 99),
@@ -58,12 +60,13 @@ class Game(models.Model):
 
     creation_datetime = models.DateTimeField(auto_now=True)
     board = PickledObjectField()
-    difficulty = models.CharField(
-        max_length=2, choices=(
-            (str(x.value), x.name.title()) for x in Difficulty
-        ), default=Difficulty.easy.value, null=True, blank=True
+    difficulty = models.IntegerField(
+        choices=(
+            (x.value, x.name.title().replace('_', ' ')) for x in Difficulty
+        ), default=Difficulty.easy.value, null=True
     )
     game_over = models.BooleanField(default=False)
+    win = models.BooleanField(default=False)
 
     @property
     def board_size(self):
@@ -74,7 +77,7 @@ class Game(models.Model):
         if difficulty is not None:
             board_size, mine_count = cls.configuration[difficulty]
 
-        game = cls(difficulty=difficulty)
+        game = cls(difficulty=difficulty.value)
         game.board = [
             [Cell(x, y) for x in range(board_size)]
             for y in range(board_size)
@@ -92,17 +95,24 @@ class Game(models.Model):
         return game
 
     def flag(self, x, y):
+        if self.game_over:
+            return self.game_over, self.win, []
+
         cell = self.board[y][x]
         if cell.display == CellDisplay.cleared:
-            return []
+            return self.game_over, self.win, []
         cell.has_flag = not cell.has_flag
+        self._check_for_game_over()
         self.save()
-        return [cell]
+        return self.game_over, self.win, [cell]
 
-    def reveal_area(self, x, y):
+    def sweep(self, x, y):
         '''
         Reveals safe area. It updates the display board and returns the cells that changed.
         '''
+        if self.game_over:
+            return self.game_over, self.win, []
+
         cell = self.board[y][x]
         cell.hidden = False
         cells_revealed = {cell}
@@ -120,8 +130,9 @@ class Game(models.Model):
                         cells_revealed.add(cell)
 
         self.game_over = is_game_over
+        self._check_for_game_over()
         self.save()
-        return is_game_over, cells_revealed
+        return self.game_over, self.win, cells_revealed
 
     def _place_mine(self, x, y):
         if x < 0 or y < 0:
@@ -163,6 +174,19 @@ class Game(models.Model):
                 if not cell.has_mine and cell.safe_area_id is None and cell.neighbor_mines == 0:
                     area_id += 1
                     mark_area(x, y, area_id)
+
+    def _check_for_game_over(self):
+        if self.game_over:
+            return
+
+        for y in range(self.board_size):
+            for x in range(self.board_size):
+                cell = self.board[y][x]
+                if cell.has_mine and not cell.has_flag:
+                    return
+                if not cell.has_mine and cell.hidden:
+                    return
+        self.game_over = self.win = True
 
     def __str__(self):
         return '\n'.join(
