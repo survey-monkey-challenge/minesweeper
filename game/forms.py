@@ -9,12 +9,13 @@ class CreateGameForm(forms.ModelForm):
         model = Game
         fields = ['difficulty']
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, action='', submit_label='Start game', **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = helper.FormHelper()
         self.helper.form_class = 'form-horizontal'
-        self.helper.label_class = 'col-lg-2'
-        self.helper.field_class = 'col-lg-2'
+        self.helper.label_class = 'col-md-6'
+        self.helper.field_class = 'col-md-6'
         self.helper.form_error_title = 'Form Errors'
         self.helper.form_method = 'post'
-        self.helper.add_input(layout.Submit('submit', 'Start game'))
+        self.helper.form_action = action
+        self.helper.add_input(layout.Submit('submit', submit_label))

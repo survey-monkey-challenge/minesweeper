@@ -8,7 +8,7 @@ from picklefield.fields import PickledObjectField
 @enum.unique
 class CellDisplay(enum.IntEnum):
     hidden = 0
-    clear = 1
+    cleared = 1
     flagged = 2
     mine = 3
 
@@ -32,13 +32,13 @@ class Cell:
 
     @property
     def display(self):
+        if self.has_flag:
+            return CellDisplay.flagged
         if self.hidden:
             return CellDisplay.hidden
         if self.has_mine:
             return CellDisplay.mine
-        if self.has_flag:
-            return CellDisplay.flagged
-        return CellDisplay.clear
+        return CellDisplay.cleared
 
     def __repr__(self):
         if self.has_mine:
@@ -90,6 +90,14 @@ class Game(models.Model):
         game._precalculate_empty_areas()
         game.save()
         return game
+
+    def flag(self, x, y):
+        cell = self.board[y][x]
+        if cell.display == CellDisplay.cleared:
+            return []
+        cell.has_flag = not cell.has_flag
+        self.save()
+        return [cell]
 
     def reveal_area(self, x, y):
         '''
@@ -158,6 +166,6 @@ class Game(models.Model):
 
     def __str__(self):
         return '\n'.join(
-            '|' + ''.join('{:2}'.format('' if cell is None else cell) for cell in row) + '|'
+            '|' + ''.join('{:2}'.format(cell.neighbor_mines) for cell in row) + '|'
             for row in self.board
         )

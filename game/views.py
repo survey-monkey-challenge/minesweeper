@@ -37,6 +37,10 @@ class GameView(generic.DetailView):
     def get_context_data(self, **kwargs):
         context_data = super().get_context_data(**kwargs)
         context_data['signed_id'] = self.kwargs['signed_id']
+        context_data['form'] = CreateGameForm(
+            action=reverse('game:create'),
+            submit_label='Start new game'
+        )
         return context_data
 
 
@@ -50,7 +54,6 @@ def sweep_view(request, signed_id):
     x = int(request.POST['x'])
     y = int(request.POST['y'])
     is_game_over, cells = game.reveal_area(x, y)
-
     data = {
         'is_game_over': is_game_over,
         'cells': [
@@ -58,6 +61,28 @@ def sweep_view(request, signed_id):
                 'x': cell.x,
                 'y': cell.y,
                 'neighbor_mines': cell.neighbor_mines,
+                'css_class': cell.display.name,
+            } for cell in cells
+        ]
+    }
+    return HttpResponse(json.dumps(data), content_type='application/json')
+
+
+def flag_view(request, signed_id):
+    if not request.is_ajax() or not request.POST:
+        raise HttpResponseBadRequest()
+
+    signer = signing.Signer()
+    game_id = signer.unsign(signed_id)
+    game = get_object_or_404(Game, pk=game_id)
+    x = int(request.POST['x'])
+    y = int(request.POST['y'])
+    cells = game.flag(x, y)
+    data = {
+        'cells': [
+            {
+                'x': cell.x,
+                'y': cell.y,
                 'css_class': cell.display.name,
             } for cell in cells
         ]

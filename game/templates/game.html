@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load crispy_forms_tags %}
 
 {% block content %}
   <div id="game_over" class="row {% if not game.game_over %}vis_hidden{% endif %}">
@@ -15,7 +16,7 @@
                 data-x="{{ cell.x }}"
                 data-y="{{ cell.y }}"
                 class="cell-{{ cell.display.name }}">
-                {% if cell.display.name == 'clear' and cell.neighbor_mines != 0 %}
+                {% if cell.display.name == 'cleared' and cell.neighbor_mines != 0 %}
                   {{ cell.neighbor_mines }}
                 {% endif %}
               </td>
@@ -23,15 +24,13 @@
           </tr>
         {% endfor %}
       </tbody>
-    <table>
+    </table>
   </div>
 
   <br/>
   <div class="row">
-    <div class="col-md-offset-5 col-md-2">
-      <a href="{% url 'game:create' %}">
-        <button class="btn btn-primary">Home</button>
-      </a>
+    <div class="col-md-offset-2 col-md-6">
+      {% crispy form %}
     </div>
   </div>
 {% endblock %}
@@ -39,20 +38,38 @@
 
 {% block scripts %}
   <script>
+    function changeCells(cells) {
+      $.each(cells, function(i, cell) {
+        var $td = $('#cell' + cell.x + '-' + cell.y);
+        $td.attr('class', 'cell-' + cell.css_class);
+        if (cell.neighbor_mines > 0 && cell.css_class == 'cleared') {
+          $td.html(cell.neighbor_mines);
+        }
+      });
+    }
+
     $(function() {
+      // flag cell
+      $('table.board tbody').on('contextmenu', 'td', function(event) {
+        event.preventDefault();
+        var $td = $(event.target);
+        $.post("{% url 'game:flag' signed_id %}", {
+          x: $td.data('x'),
+          y: $td.data('y')
+        }, function(data) {
+          changeCells(data.cells);
+        });
+      });
+
+      // clear cell
       $('table.board tbody').on('click', 'td', function(event) {
+        event.preventDefault();
         var $td = $(event.target);
         $.post("{% url 'game:sweep' signed_id %}", {
           x: $td.data('x'),
           y: $td.data('y')
         }, function(data) {
-          $.each(data.cells, function(i, cell) {
-            var $td = $('#cell' + cell.x + '-' + cell.y);
-            $td.addClass('cell-' + cell.css_class);
-            if (cell.neighbor_mines > 0) {
-              $td.html(cell.neighbor_mines);
-            }
-          });
+          changeCells(data.cells);
           if (data.is_game_over) {
             $('#game_over').removeClass('vis_hidden');
           }

@@ -1,9 +1,9 @@
 body {
-  padding-top: 3rem;
+  padding-top: 8rem;
 }
 
 #game_over {
-    height: 100px;
+    height: 80px;
 }
 
 .vis_hidden {
@@ -20,7 +20,7 @@ table.board td.cell-hidden {
     background-color: grey;
 }
 
-table.board td.cell-clear {
+table.board td.cell-cleared {
     background-color: darkgrey;
 }
 
