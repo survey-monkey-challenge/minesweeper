@@ -13,7 +13,11 @@ body {
 table.board td {
     width: 25px;
     height: 25px;
-    border: solid black;
+    border: solid white;
+}
+
+table.board {
+    border: solid black 4px;
 }
 
 table.board td {
@@ -25,7 +29,7 @@ table.board td.cell-cleared {
 }
 
 table.board td.cell-flagged span {
-    color: darkblue;
+    color: lightgreen;
 }
 
 table.board td.cell-mine span {
