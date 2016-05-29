@@ -117,7 +117,7 @@ class Game(models.Model):
 
     def sweep_cell(self, x, y):
         '''
-        Sweeps a cell unless the game is over or the cell has a flag.
+        Sweeps a cell unless the game is over or the cell has a flag or it's already cleared.
         This operation results in one of four scenarios:
             * The cell has a mine:
                 Game over. Reveal all cells
@@ -133,7 +133,7 @@ class Game(models.Model):
         Returns the game over state and the cells to update (zero or more cells)
         '''
         cell = self.board[y][x]
-        if self.game_over or cell.has_flag:
+        if self.game_over or cell.has_flag or not cell.hidden:
             return self.game_over, self.win, []
 
         cell.hidden = False
