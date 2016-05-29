@@ -3,7 +3,9 @@
 
 {% block content %}
   <div class="row">
-    <h2>Ranking</h2>
+    <div class="page-header">
+      <h2>Ranking</h2>
+    </div>
   </div>
 
   <div class="row">
@@ -41,7 +43,7 @@
     {% else %}
       <h5>No one beat the game at this difficulty. <a href="{% url 'game:create' %}">Want to give it a shot?</a></h5>
       <p>
-        TODO: This should be improved and include a button to create a new game on the current difficulty
+        <mark>TODO:</mark> This should be improved and include a button to create a new game on the current difficulty
       </p>
     {% endif %}
   </div>

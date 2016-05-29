@@ -43,7 +43,21 @@
       </div>
     </nav>
 
-    <div class="container">
+    <noscript>
+        <style type="text/css">
+            #main_content {display:none;}
+        </style>
+        <div class="container">
+          <div class="row">
+            <div class="alert alert-danger">
+              <h2>You need javascript enable in order to use this game.</h2>
+              <p>Please enable it and reload this page.</p>
+            </div>
+          </div>
+        </div>
+    </noscript>
+
+    <div id="main_content" class="container">
       {% block content %}{% endblock %}
     </div>
 
