@@ -19,6 +19,11 @@ def flag_view(request, signed_id):
 
 
 def process_action_request(request, signed_id, action, hide_mine_counter=True):
+    '''
+    Both sweep and flag actions are pretty much identical except for the method
+    they call on the game model object, and whether it should return nearby_mine_counter.
+    That's why this function was created. It can be seem as a higher-order function.
+    '''
     if not request.is_ajax() or not request.POST:
         return HttpResponseBadRequest()
 

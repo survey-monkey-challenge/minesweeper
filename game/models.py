@@ -7,6 +7,10 @@ from picklefield.fields import PickledObjectField
 
 @enum.unique
 class CellDisplay(enum.IntEnum):
+    '''
+    Represents the different ways a cell can be displayed.
+    There are css classes with a 'cell-' prefix to mach each.
+    '''
     hidden = 0
     cleared = 1
     flagged = 2
@@ -51,7 +55,6 @@ class Cell:
 
 class Game(models.Model):
     creation_datetime = models.DateTimeField(auto_now=True)
-    board = PickledObjectField()
     difficulty = models.IntegerField(
         choices=(
             (x.value, x.name.title().replace('_', ' '))
@@ -60,6 +63,7 @@ class Game(models.Model):
     )
     game_over = models.BooleanField(default=False)
     win = models.BooleanField(default=False)
+    board = PickledObjectField()  # matrix of cells
 
     @property
     def board_size(self):
@@ -81,6 +85,9 @@ class Game(models.Model):
 
     @classmethod
     def _non_random_create(cls, board_size, mine_placement, difficulty=Difficulty.normal):
+        '''
+        This method is useful for testing specific scenarios on the unit tests.
+        '''
         game = cls(difficulty=difficulty.value)
         game.board = [
             [Cell(x, y) for x in range(board_size)]
@@ -94,6 +101,11 @@ class Game(models.Model):
         return game
 
     def flag_cell(self, x, y):
+        '''
+        Flags a cell unless the game is over or the cell has already being cleared.
+        Checks if the end of game has been reached (See _check_for_game_over)
+        Returns the game over state and the cells to update (one or zero in this case)
+        '''
         cell = self.board[y][x]
         if self.game_over or cell.display == CellDisplay.cleared:
             return self.game_over, self.win, []
@@ -105,7 +117,20 @@ class Game(models.Model):
 
     def sweep_cell(self, x, y):
         '''
-        Reveals safe area. It updates the display board and returns the cells that changed.
+        Sweeps a cell unless the game is over or the cell has a flag.
+        This operation results in one of four scenarios:
+            * The cell has a mine:
+                Game over. Reveal all cells
+            * The cell has nearby mine/s:
+                Reveal only that cell and show the number of nearby mines
+            * The cell is in a "safe area":
+                Reveal that area including the edges showing the number of
+                nearby mines (this has been precalculated at the creation of the board)
+            * The cell is the last cell to reveal and all mines have been flagged:
+                You win!
+
+        Checks if the end of game has been reached (See _check_for_game_over)
+        Returns the game over state and the cells to update (zero or more cells)
         '''
         cell = self.board[y][x]
         if self.game_over or cell.has_flag:
@@ -132,6 +157,11 @@ class Game(models.Model):
         return self.game_over, self.win, cells_revealed
 
     def _place_mine(self, x, y):
+        '''
+        Places a mine at x, y. All surrounding cells have their nearby_mine_counter attribute
+        increased. If the cell already has a mine, ignore it.
+        negative indices while valid on Python should raise an exception here.
+        '''
         if x < 0 or y < 0:
             raise IndexError('Negative indices not allowed in the board. x={}, y={}'.format(x, y))
 
@@ -148,9 +178,18 @@ class Game(models.Model):
         self.board[y][x].nearby_mine_counter = 0
 
     def _identify_safe_areas(self):
+        '''
+        Identifies safe areas and gives them an unique id.
+        Safe areas are defined as contiguous cells which have no mines or nearby mines.
+        These are the big areas which are revealed on the game when sweeping one of those cells.
+
+        The point of this method is avoid the expensive DFS calculation to reveal the area while
+        the game is being played. Instead, the total cost is N^2 (it could be brought to
+        O(number of cells in the area) by using more memory and a more complicated structure).
+        '''
         direction_vectors = [(1, 0), (-1, 0), (0, -1), (0, 1)]  # up down left right
 
-        # this is a dfs algorithm, not great. Improve this.
+        # this is a DFS algorithm, not great. Improve this.
         # See https://en.wikipedia.org/wiki/Connected-component_labeling
         def mark_area(x, y, area_id):
             if not (0 <= x < self.board_size and 0 <= y < self.board_size):
@@ -174,6 +213,10 @@ class Game(models.Model):
                     mark_area(x, y, area_id)
 
     def _check_for_game_over(self):
+        '''
+        Checks if the end of game has been reached (all mines have been flagged and
+        the rest of the cells have been cleared)
+        '''
         if self.game_over:
             return
 
@@ -187,6 +230,7 @@ class Game(models.Model):
         self.game_over = self.win = True
 
     def __str__(self):
+        '''String representation of the matrix of nearby_mine_counter. Useful for debugging'''
         return '\n'.join(
             '|' + ''.join('{:2}'.format(cell.nearby_mine_counter) for cell in row) + '|'
             for row in self.board

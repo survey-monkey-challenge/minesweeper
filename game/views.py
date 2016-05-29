@@ -7,6 +7,10 @@ from .models import Game, Difficulty
 from .forms import CreateGameForm
 
 
+# Not that this is really needed, but I'm making the url of every game unguessable
+# by signing the game id (from the db). Another solution is to generate a uuid, save it
+# in the model, index that field and use it to retrieve the game. I rather avoid that
+# but I'm not 100% happy with this approach either
 signer = signing.Signer()
 
 
