@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div id="game_over" class="row {% if not game.game_over %}vis_hidden{% endif %}">
+    <h1 class="bg-danger text-center">GAME OVER!</h1>
+  </div>
+
+  <div class="row">
+    <table class="board center-table">
+      <tbody>
+        {% for row in game.board %}
+          <tr>
+            {% for cell in row %}
+              <td id="cell{{ cell.x }}-{{ cell.y }}"
+                data-x="{{ cell.x }}"
+                data-y="{{ cell.y }}"
+                class="cell-{{ cell.display.name }}">
+                {% if cell.display.name == 'clear' and cell.neighbor_mines != 0 %}
+                  {{ cell.neighbor_mines }}
+                {% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    <table>
+  </div>
+
+  <br/>
+  <div class="row">
+    <div class="col-md-offset-5 col-md-2">
+      <a href="{% url 'game:create' %}">
+        <button class="btn btn-primary">Home</button>
+      </a>
+    </div>
+  </div>
+{% endblock %}
+
+
+{% block scripts %}
+  <script>
+    $(function() {
+      $('table.board tbody').on('click', 'td', function(event) {
+        var $td = $(event.target);
+        $.post("{% url 'game:sweep' signed_id %}", {
+          x: $td.data('x'),
+          y: $td.data('y')
+        }, function(data) {
+          $.each(data.cells, function(i, cell) {
+            var $td = $('#cell' + cell.x + '-' + cell.y);
+            $td.addClass('cell-' + cell.css_class);
+            if (cell.neighbor_mines > 0) {
+              $td.html(cell.neighbor_mines);
+            }
+          });
+          if (data.is_game_over) {
+            $('#game_over').removeClass('vis_hidden');
+          }
+        });
+      });
+    });
+  </script>
+{% endblock %}

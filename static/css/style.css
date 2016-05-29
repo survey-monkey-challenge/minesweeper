@@ -1,0 +1,40 @@
+body {
+  padding-top: 3rem;
+}
+
+#game_over {
+    height: 100px;
+}
+
+.vis_hidden {
+    visibility: hidden;
+}
+
+table.board td {
+    width: 25px;
+    height: 25px;
+    border: solid black;
+}
+
+table.board td.cell-hidden {
+    background-color: grey;
+}
+
+table.board td.cell-clear {
+    background-color: darkgrey;
+}
+
+table.board td.cell-flagged {
+    background-color: blue;
+}
+
+table.board td.cell-mine {
+    background-color: red;
+}
+
+.center-table
+{
+  margin: 0 auto !important;
+  float: none !important;
+}
+
