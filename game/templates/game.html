@@ -18,8 +18,8 @@
                 data-x="{{ cell.x }}"
                 data-y="{{ cell.y }}"
                 class="cell-{{ cell.display.name }}">
-                {% if cell.display.name == 'cleared' and cell.neighbor_mines != 0 %}
-                  {{ cell.neighbor_mines }}
+                {% if cell.display.name == 'cleared' and cell.nearby_mine_counter != 0 %}
+                  {{ cell.nearby_mine_counter }}
                 {% endif %}
               </td>
             {% endfor %}
@@ -44,8 +44,8 @@
       $.each(cells, function(i, cell) {
         var $td = $('#cell' + cell.x + '-' + cell.y);
         $td.attr('class', 'cell-' + cell.css_class);
-        if (cell.neighbor_mines > 0 && cell.css_class == 'cleared') {
-          $td.html(cell.neighbor_mines);
+        if (cell.nearby_mine_counter > 0 && cell.css_class == 'cleared') {
+          $td.html(cell.nearby_mine_counter);
         }
       });
     }

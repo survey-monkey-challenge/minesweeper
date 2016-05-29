@@ -10,6 +10,9 @@ from .models import Game, Difficulty
 from .forms import CreateGameForm
 
 
+signer = signing.Signer()
+
+
 class CreateGameView(generic.FormView):
     form_class = CreateGameForm
     template_name = 'create_game.html'
@@ -20,7 +23,6 @@ class CreateGameView(generic.FormView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        signer = signing.Signer()
         signed_id = signer.sign(self.object.id)
         return reverse('game:match', args=(signed_id,))
 
@@ -34,7 +36,6 @@ class GameView(generic.DetailView):
     template_name = 'game.html'
 
     def get_object(self, queryset=None):
-        signer = signing.Signer()
         game_id = signer.unsign(self.kwargs['signed_id'])
         return get_object_or_404(Game, pk=int(game_id))
 
@@ -43,22 +44,20 @@ class GameView(generic.DetailView):
         context_data['signed_id'] = self.kwargs['signed_id']
         context_data['form'] = CreateGameForm(
             action=reverse('game:create'),
-            submit_label='Start new game',
             initial={'difficulty': self.object.difficulty}
         )
         return context_data
 
 
-def sweep_view(request, signed_id):
+def process_action_request(request, signed_id, action, hide_mine_counter=True):
     if not request.is_ajax() or not request.POST:
         raise HttpResponseBadRequest()
 
-    signer = signing.Signer()
     game_id = signer.unsign(signed_id)
     game = get_object_or_404(Game, pk=game_id)
     x = int(request.POST['x'])
     y = int(request.POST['y'])
-    is_game_over, win, cells = game.sweep(x, y)
+    is_game_over, win, cells = action(game, x, y)
     data = {
         'is_game_over': is_game_over,
         'win': win,
@@ -66,33 +65,17 @@ def sweep_view(request, signed_id):
             {
                 'x': cell.x,
                 'y': cell.y,
-                'neighbor_mines': cell.neighbor_mines,
+                'nearby_mine_counter': cell.nearby_mine_counter if not hide_mine_counter else None,
                 'css_class': cell.display.name,
             } for cell in cells
         ]
     }
     return HttpResponse(json.dumps(data), content_type='application/json')
+
+
+def sweep_view(request, signed_id):
+    return process_action_request(request, signed_id, Game.sweep_cell, False)
 
 
 def flag_view(request, signed_id):
-    if not request.is_ajax() or not request.POST:
-        raise HttpResponseBadRequest()
-
-    signer = signing.Signer()
-    game_id = signer.unsign(signed_id)
-    game = get_object_or_404(Game, pk=game_id)
-    x = int(request.POST['x'])
-    y = int(request.POST['y'])
-    is_game_over, win, cells = game.flag(x, y)
-    data = {
-        'is_game_over': is_game_over,
-        'win': win,
-        'cells': [
-            {
-                'x': cell.x,
-                'y': cell.y,
-                'css_class': cell.display.name,
-            } for cell in cells
-        ]
-    }
-    return HttpResponse(json.dumps(data), content_type='application/json')
+    return process_action_request(request, signed_id, Game.flag_cell, True)

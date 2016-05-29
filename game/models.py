@@ -23,12 +23,11 @@ class Difficulty(enum.IntEnum):
 
 class Cell:
     def __init__(self, x, y):
-        self.x = x
-        self.y = y
+        self.x, self.y = x, y
         self.hidden = True
         self.has_mine = False
         self.has_flag = False
-        self.neighbor_mines = 0
+        self.nearby_mine_counter = 0
         self.safe_area_id = None
 
     @property
@@ -44,25 +43,19 @@ class Cell:
     def __repr__(self):
         if self.has_mine:
             return 'B'
-        elif self.neighbor_mines == 0:
+        elif self.nearby_mine_counter == 0:
             return 'Z{}'.format(self.safe_area_id)
         else:
-            return 'N{}'.format(self.neighbor_mines)
+            return 'N{}'.format(self.nearby_mine_counter)
 
 
 class Game(models.Model):
-    configuration = {
-        Difficulty.super_easy: (3, 2),
-        Difficulty.easy: (9, 10),
-        Difficulty.normal: (16, 40),
-        Difficulty.hard: (22, 99),
-    }
-
     creation_datetime = models.DateTimeField(auto_now=True)
     board = PickledObjectField()
     difficulty = models.IntegerField(
         choices=(
-            (x.value, x.name.title().replace('_', ' ')) for x in Difficulty
+            (x.value, x.name.title().replace('_', ' '))
+            for x in Difficulty
         ), default=Difficulty.easy.value, null=True
     )
     game_over = models.BooleanField(default=False)
@@ -73,58 +66,62 @@ class Game(models.Model):
         return len(self.board)
 
     @classmethod
-    def create(cls, *, difficulty=None, board_size=None, mine_placement=None):
-        if difficulty is not None:
-            board_size, mine_count = cls.configuration[difficulty]
+    def create(cls, *, difficulty=Difficulty.normal):
+        configuration = {
+            Difficulty.super_easy: (3, 2),
+            Difficulty.easy: (9, 10),
+            Difficulty.normal: (16, 40),
+            Difficulty.hard: (22, 99),
+        }
+        board_size, mine_count = configuration[difficulty]
+        return cls._non_random_create(board_size, [
+            (random.randint(0, board_size - 1), random.randint(0, board_size - 1))
+            for _ in range(mine_count)
+        ], difficulty)
 
+    @classmethod
+    def _non_random_create(cls, board_size, mine_placement, difficulty=Difficulty.normal):
         game = cls(difficulty=difficulty.value)
         game.board = [
             [Cell(x, y) for x in range(board_size)]
             for y in range(board_size)
         ]
-        if mine_placement is None:
-            for _ in range(mine_count):
-                x, y = random.randint(0, board_size - 1), random.randint(0, board_size - 1)
-                game._place_mine(x, y)
-        else:
-            for x, y in mine_placement:
-                game._place_mine(x, y)
+        for x, y in mine_placement:
+            game._place_mine(x, y)
 
-        game._precalculate_empty_areas()
+        game._identify_safe_areas()
         game.save()
         return game
 
-    def flag(self, x, y):
-        if self.game_over:
+    def flag_cell(self, x, y):
+        cell = self.board[y][x]
+        if self.game_over or cell.display == CellDisplay.cleared:
             return self.game_over, self.win, []
 
-        cell = self.board[y][x]
-        if cell.display == CellDisplay.cleared:
-            return self.game_over, self.win, []
         cell.has_flag = not cell.has_flag
         self._check_for_game_over()
         self.save()
         return self.game_over, self.win, [cell]
 
-    def sweep(self, x, y):
+    def sweep_cell(self, x, y):
         '''
         Reveals safe area. It updates the display board and returns the cells that changed.
         '''
-        if self.game_over:
+        cell = self.board[y][x]
+        if self.game_over or cell.has_flag:
             return self.game_over, self.win, []
 
-        cell = self.board[y][x]
         cell.hidden = False
         cells_revealed = {cell}
         is_game_over = cell.has_mine
-        is_safe_area = cell.safe_area_id is not None and cell.neighbor_mines == 0
+        inside_safe_area = cell.safe_area_id is not None and cell.nearby_mine_counter == 0
 
-        if is_game_over or is_safe_area:
+        if is_game_over or inside_safe_area:
             safe_area_id = cell.safe_area_id
             for x in range(self.board_size):
                 for y in range(self.board_size):
                     cell = self.board[y][x]
-                    clicked_on_safe_area = is_safe_area and cell.safe_area_id == safe_area_id
+                    clicked_on_safe_area = inside_safe_area and cell.safe_area_id == safe_area_id
                     if is_game_over or clicked_on_safe_area:
                         cell.hidden = False
                         cells_revealed.add(cell)
@@ -138,7 +135,8 @@ class Game(models.Model):
         if x < 0 or y < 0:
             raise IndexError('Negative indices not allowed in the board. x={}, y={}'.format(x, y))
 
-        if self.board[y][x].has_mine:  # ignoring collitions
+        # ignoring collitions, otherwise the nearby_mine_counter will count duplicates
+        if self.board[y][x].has_mine:
             return
 
         self.board[y][x].has_mine = True
@@ -146,10 +144,10 @@ class Game(models.Model):
             for j in range(max(0, y - 1), min(y + 2, self.board_size)):
                 if self.board[j][i].has_mine:
                     continue
-                self.board[j][i].neighbor_mines += 1
-        self.board[y][x].neighbor_mines = 0
+                self.board[j][i].nearby_mine_counter += 1
+        self.board[y][x].nearby_mine_counter = 0
 
-    def _precalculate_empty_areas(self):
+    def _identify_safe_areas(self):
         direction_vectors = [(1, 0), (-1, 0), (0, -1), (0, 1)]  # up down left right
 
         # this is a dfs algorithm, not great. Improve this.
@@ -163,7 +161,7 @@ class Game(models.Model):
                 return
 
             cell.safe_area_id = area_id
-            if cell.neighbor_mines == 0:
+            if cell.nearby_mine_counter == 0:
                 for dx, dy in direction_vectors:
                     mark_area(x + dx, y + dy, area_id)
 
@@ -171,7 +169,7 @@ class Game(models.Model):
         for y in range(self.board_size):
             for x in range(self.board_size):
                 cell = self.board[y][x]
-                if not cell.has_mine and cell.safe_area_id is None and cell.neighbor_mines == 0:
+                if not cell.has_mine and cell.safe_area_id is None and cell.nearby_mine_counter == 0:
                     area_id += 1
                     mark_area(x, y, area_id)
 
@@ -190,6 +188,6 @@ class Game(models.Model):
 
     def __str__(self):
         return '\n'.join(
-            '|' + ''.join('{:2}'.format(cell.neighbor_mines) for cell in row) + '|'
+            '|' + ''.join('{:2}'.format(cell.nearby_mine_counter) for cell in row) + '|'
             for row in self.board
         )
