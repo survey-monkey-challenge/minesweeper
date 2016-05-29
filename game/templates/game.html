@@ -14,18 +14,7 @@
         {% for row in game.board %}
           <tr>
             {% for cell in row %}
-              <td id="cell{{ cell.x }}-{{ cell.y }}"
-                data-x="{{ cell.x }}"
-                data-y="{{ cell.y }}"
-                class="cell-{{ cell.display.name }} text-center">
-                {% if cell.display.name == 'cleared' and cell.nearby_mine_counter != 0 %}
-                  {{ cell.nearby_mine_counter }}
-                {% elif cell.display.name == 'flagged' %}
-                  <span class="glyphicon glyphicon-flag text-center" aria-hidden="true"></span>
-                {% elif cell.display.name == 'mine' %}
-                  <span class="glyphicon glyphicon-asterisk text-center" aria-hidden="true"></span>
-                {% endif %}
-              </td>
+              {% include 'cell.html' with cell=cell %}
             {% endfor %}
           </tr>
         {% endfor %}
@@ -47,16 +36,7 @@
     function changeCells(cells) {
       $.each(cells, function(i, cell) {
         var $td = $('#cell' + cell.x + '-' + cell.y);
-        $td.attr('class', 'text-center cell-' + cell.css_class);
-        if (cell.nearby_mine_counter > 0 && cell.css_class == 'cleared') {
-          $td.html(cell.nearby_mine_counter);
-        } else if (cell.css_class == 'flagged') {
-          $td.html('<span class="glyphicon glyphicon-flag text-center" aria-hidden="true"></span>');
-        } else if (cell.css_class == 'mine') {
-          $td.html('<span class="glyphicon glyphicon-asterisk text-center" aria-hidden="true"></span>');
-        } else {
-          $td.html('');
-        }
+        $td.replaceWith(cell.html);
       });
     }
 

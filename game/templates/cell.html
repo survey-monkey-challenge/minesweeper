@@ -1,0 +1,12 @@
+<td id="cell{{ cell.x }}-{{ cell.y }}"
+  data-x="{{ cell.x }}"
+  data-y="{{ cell.y }}"
+  class="cell-{{ cell.display.name }} text-center">
+  {% if cell.display.name == 'cleared' and cell.nearby_mine_counter != 0 %}
+    {{ cell.nearby_mine_counter }}
+  {% elif cell.display.name == 'flagged' %}
+    <span class="glyphicon glyphicon-flag text-center" aria-hidden="true"></span>
+  {% elif cell.display.name == 'mine' %}
+    <span class="glyphicon glyphicon-asterisk text-center" aria-hidden="true"></span>
+  {% endif %}
+</td>
