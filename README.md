@@ -1,5 +1,9 @@
 # Requirements
--  Python 3.3 or greater
+- Python 3.3 or greater
+- Django 1.9.6
+- django-crispy-forms 1.6.0
+- django-picklefield 0.3.2
+- uWSGI 2.0.13.1
 
 # Installation
 
