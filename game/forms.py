@@ -13,8 +13,8 @@ class CreateGameForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.helper = helper.FormHelper()
         self.helper.form_class = 'form-horizontal'
-        self.helper.label_class = 'col-md-8'
-        self.helper.field_class = 'col-md-4'
+        self.helper.label_class = 'col-md-6'
+        self.helper.field_class = 'col-md-6'
         self.helper.form_method = 'post'
         self.helper.form_action = action
         self.helper.add_input(layout.Submit('submit', 'Start new game'))
