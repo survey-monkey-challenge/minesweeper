@@ -13,8 +13,36 @@
   </div>
   <hr/>
   <div class="row">
-    <h3>Technical notes</h3>
-    <p>
-    </p>
+    <h3>Random technical notes</h3>
+    <ul>
+      <li>
+        <p>
+          Deployment is done through a docker container. Please execute ./deployment/build_and_run_docker.sh to build docker image and run the container.
+        </p>
+        <p>
+         This includes:
+        </p>
+        <ul>
+          <li>Installation of dependencies (specific versions)</li>
+          <li>nginx (with http caching set)</li>
+          <li>uwsgi</li>
+          <li>supervisord</li>
+          <li>Django's ManifestStaticFilesStorage static files generation with unique url's based on the file content</li>
+          <li>settings.DEBUG set to false.</li>
+        </ul>
+      </li>
+      <li>
+        Unit tests for the game's board, logic and views are included in tests.py.
+      </li>
+      <li>
+        The "safe areas" (see sweep_cell's documentation on models.py) are pre-calculated for better
+        performance. If possible, I'll implement a better alternative to the DFS approach that I'm
+        currently using to mark all cells in a given area. One excellent alternative is <a href="https://en.wikipedia.org/wiki/Connected-component_labeling">Connected-component labeling</a>
+      </li>
+      <li>Valid HTML (according to www.validity.org.uk and tidy)</li>
+      <li>While is not really necessary, the url of the matches are "signed" to avoid random strangers joining other games. See the comment next to "signing.Signer()" on views.py</li>
+      <li>The board is persisted as a pickled matrix of Cell objects. I'm a bit conflicted by this approach. I could have Cells as django models with a foreign key to the game's model, but most operations require the complete matrix. I'm trying to have too many queries back to the DB. If I was using postgres, I would use an array of integers to represent the cells and their state.</li>
+      <li>Custom 404 and 500 (hopefully you won't see this one) have been added.</li>
+    </ul>
   </div>
 {% endblock %}
